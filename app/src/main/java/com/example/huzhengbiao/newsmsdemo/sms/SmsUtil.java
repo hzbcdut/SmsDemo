@@ -4,6 +4,8 @@ import android.os.Handler;
 import android.os.Message;
 
 
+import com.example.huzhengbiao.newsmsdemo.LogUtil;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,14 +36,12 @@ public class SmsUtil {
     }
 
     public static void returnSmsCode(Handler handler, String code) {
+        LogUtil.logInfo("debug", " --> handler = " + handler);
         if (handler != null) {
             Message message = handler.obtainMessage();
             message.what = MESSAGE_CODE;
             message.obj = code;
             message.sendToTarget();
-
-            handler.removeCallbacksAndMessages(null);
-            handler = null;
         }
     }
 }

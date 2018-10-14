@@ -16,23 +16,34 @@ import com.example.huzhengbiao.newsmsdemo.sms.SmsUtil;
 public class MainActivity extends AppCompatActivity {
 
     private SmsPresent mSmsPresent;
+    private Handler handler;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         checkPermission();
-        mSmsPresent = new SmsPresent(new Handler(){
-            @Override
-            public void handleMessage(Message msg) {
-                super.handleMessage(msg);
-                switch (msg.what) {
-                    case SmsUtil.MESSAGE_CODE:
-                        LogUtil.logDebug("debug", " --> MainActivity code = " + msg.obj);
-                        break;
-                }
-            }
-        }, this);
 
+        handler = new SmsHandler();
+        mSmsPresent = new SmsPresent(handler, this);
+    }
+
+
+    public static class SmsHandler extends Handler{
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case SmsUtil.MESSAGE_CODE:
+                    LogUtil.logDebug("debug", " --> MainActivity code = " + msg.obj);
+                    String code = (String) msg.obj;
+
+                    // TODO: 2018/10/14  这里来处理短信验证码， 但是因为采用的方案是通过两种方式获取的短信
+                    // 业务逻辑是收到短信并更新之后，就会finish此页面的话
+                    // 所以在这里要判断是否Activity或Fragment已经销毁了， 才能去做更新UI的操作。
+                    break;
+            }
+
+        }
     }
 
     @Override
