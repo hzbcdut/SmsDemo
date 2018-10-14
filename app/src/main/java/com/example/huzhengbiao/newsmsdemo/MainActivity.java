@@ -3,12 +3,15 @@ package com.example.huzhengbiao.newsmsdemo;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Handler;
+import android.os.Message;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.example.huzhengbiao.newsmsdemo.sms.SmsPresent;
+import com.example.huzhengbiao.newsmsdemo.sms.SmsUtil;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -18,7 +21,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         checkPermission();
-        mSmsPresent = new SmsPresent(new Handler(), this);
+        mSmsPresent = new SmsPresent(new Handler(){
+            @Override
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                switch (msg.what) {
+                    case SmsUtil.MESSAGE_CODE:
+                        LogUtil.logDebug("debug", " --> MainActivity code = " + msg.obj);
+                        break;
+                }
+            }
+        }, this);
 
     }
 

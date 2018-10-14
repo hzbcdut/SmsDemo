@@ -17,6 +17,7 @@ import com.example.huzhengbiao.newsmsdemo.LogUtil;
 public class SmsPresent {
     private static final String TAG = SmsPresent.class.getSimpleName();
 
+
     private Uri mUri = Uri.parse("content://sms/inbox");
 
     private Context mContext;
@@ -27,7 +28,7 @@ public class SmsPresent {
     private SMSBroadcastReceiver mSMSBroadcastReceiver;
 
 
-    public SmsPresent(@NonNull Handler handler, @NonNull Context context) {
+    public SmsPresent(@NonNull final Handler handler, @NonNull Context context) {
         this.mContext = context;
         mSmsContentObserver = new SmsContentObserver(handler, context);
         mContentResolver =  context.getContentResolver();
@@ -46,9 +47,9 @@ public class SmsPresent {
             @Override
             public void onReceived(String message) {
                 // 处理返回的短信内容 用handler返回一个验证码就行了
-
                 String code = SmsUtil.getVerificationCode(message);
                 LogUtil.logInfo("debug", TAG + " --> code = " + code);
+                SmsUtil.returnSmsCode(handler, code);
             }
         });
     }

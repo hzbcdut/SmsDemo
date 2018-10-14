@@ -1,14 +1,20 @@
 package com.example.huzhengbiao.newsmsdemo.sms;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Message;
+import android.support.v4.content.ContextCompat;
 import android.telephony.SmsManager;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.example.huzhengbiao.newsmsdemo.LogUtil;
@@ -28,10 +34,12 @@ public class SmsContentObserver extends ContentObserver{
     public static final String TAG = SmsContentObserver.class.getSimpleName();
 
     private Context mContext;
+    private Handler mHandler;
 
     public SmsContentObserver(Handler handler, Context context) {
         super(handler);
         this.mContext = context.getApplicationContext();
+        this.mHandler = handler;
     }
 
     @Override
@@ -39,7 +47,15 @@ public class SmsContentObserver extends ContentObserver{
         super.onChange(selfChange, uri);
         LogUtil.logInfo("debug", TAG + "--> onChange(boolean selfChange, Uri uri)  selfChange = " + selfChange + " uri = " + uri);
 
+        //查询短信之前先检查一下是否有短信读取权限, 用户没授权此权限时查询可以吗?
+        if (ContextCompat.checkSelfPermission(mContext, Manifest.permission.READ_SMS)
+                != PackageManager.PERMISSION_GRANTED)  return;
 
+//        showAllColumnName(mContext);
+
+       String smsBody =  querySmsDb(mContext);
+       String code = SmsUtil.getVerificationCode(smsBody);
+       SmsUtil.returnSmsCode(mHandler, code);
     }
 
     @Override
@@ -50,37 +66,29 @@ public class SmsContentObserver extends ContentObserver{
     }
 
 
-
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
-
-
-    public void querySmsDb(Context context) {
-        querySmsDb(context, Uri.parse("content://sms/inbox"));
+    public String querySmsDb(Context context) {
+       return querySmsDb(context, Uri.parse("content://sms/inbox"));
     }
 
     /**
      * 查询手机短信
      */
-    public void  querySmsDb(Context context, Uri uri) {
-        Log.d("debug", "onChange(boolean selfChange)");
+    public String  querySmsDb(Context context, Uri uri) {
+        // 读取收件箱中含有某关键词的短信
+        ContentResolver contentResolver = context.getContentResolver();
+        Cursor cursor = contentResolver.query(uri, new String[] {
+                        "_id", "address", "body", "read" }, "body like ? and read=?",
+                new String[] { "%Spot%", "0" }, "date desc");
 
-        Cursor c = context.getContentResolver().query(uri, null, null, null, "date desc");
-        if (c != null) {
-            while (c.moveToNext()) {
-                Date d = new Date(c.getLong(c.getColumnIndex("date")));
-                String date = dateFormat.format(d);
-                StringBuilder sb = new StringBuilder();
-                sb.append("发件人手机号码: " + c.getString(c.getColumnIndex("address")))
-                        .append("信息内容: " + c.getString(c.getColumnIndex("body")))
-                        .append(" 是否查看: " + c.getInt(c.getColumnIndex("read")))
-                        .append(" 类型： " + c.getInt(c.getColumnIndex("type"))).append(date);
-
-                LogUtil.logInfo("debug", " --> length = " + sb.toString().length() + "  sb.toString() = " + sb.toString());
-                LogUtil.logInfo("debug", "--》 c.getInt(c.getColumnIndex(\"read\")) = " + c.getInt(c.getColumnIndex("read")));
-            }
-
-            c.close();
+        String smsBody = "";
+        if (cursor != null && cursor.moveToFirst()) {
+            smsBody = cursor.getString(cursor.getColumnIndex("body"));
+            String address = cursor.getString(cursor.getColumnIndex("address"));
+            LogUtil.logDebug("debug", " --> address = " + address + smsBody);
+            cursor.close();
         }
+
+        return smsBody;
     }
 
 
@@ -106,7 +114,7 @@ public class SmsContentObserver extends ContentObserver{
             String smsbody=cursor.getString(smsbodyColumn);
 
             //调用下面的截取短信中六位数字验证码的方法
-            String verificationCode = getDynamicPassword(smsbody);
+            String verificationCode = SmsUtil.getVerificationCode(smsbody);
         }
 
         // 在用managedQuery的时候，不能主动调用close()方法， 否则在Android 4.0+的系统上， 会发生崩溃
@@ -116,26 +124,15 @@ public class SmsContentObserver extends ContentObserver{
     }
 
 
-
     /**
-     * 从字符串中截取连续6位数字组合 ([0-9]{" + 6 + "})截取六位数字 进行前后断言不能出现数字 用于从短信中获取动态密码
-     *
-     * @param st 短信内容
-     * @return 截取得到的6位动态密码
+     * 查找短信数据库表的所有字段
      */
-    public String getDynamicPassword(String st){
-        //  6是验证码的位数一般为六位   如果验证码的位数变化只要将6修改为想要的位数，
-        // 过验证如果不止为数字，直接修改正则为想要的内容即可
 
-        //Pattern是java.util.regex（一个用正则表达式所订制的模式来对字符串进行匹配工作的类库包）中的一个类。
-        // 一个Pattern是一个正则表达式经编译后的表现模式
-        Pattern pattern= Pattern.compile("(?<![0-9])([0-9]{" + 6 + "})(?![0-9])") ;
-        Matcher matcher=pattern.matcher(st);
-        String dynamicPassword=null;
-        while (matcher.find()){
-            System.out.println(matcher.group());
-            dynamicPassword=matcher.group();
+    private void showAllColumnName(Context context) {
+        Uri uri = Uri.parse("content://sms/inbox");
+        final Cursor cur = context.getContentResolver().query(uri, null, null, null, null);
+        for (String s : cur.getColumnNames()){
+            LogUtil.logInfo("COLUMN_NAME", s);
         }
-        return dynamicPassword;
     }
 }
