@@ -2,14 +2,19 @@ package com.example.huzhengbiao.newsmsdemo.sms;
 
 import android.app.Activity;
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
+import android.telephony.SmsManager;
+import android.util.Log;
 
 import com.example.huzhengbiao.newsmsdemo.LogUtil;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,14 +27,19 @@ public class SmsContentObserver extends ContentObserver{
 
     public static final String TAG = SmsContentObserver.class.getSimpleName();
 
-    public SmsContentObserver(Handler handler) {
+    private Context mContext;
+
+    public SmsContentObserver(Handler handler, Context context) {
         super(handler);
+        this.mContext = context.getApplicationContext();
     }
 
     @Override
     public void onChange(boolean selfChange, Uri uri) {
         super.onChange(selfChange, uri);
         LogUtil.logInfo("debug", TAG + "--> onChange(boolean selfChange, Uri uri)  selfChange = " + selfChange + " uri = " + uri);
+
+
     }
 
     @Override
@@ -38,6 +48,41 @@ public class SmsContentObserver extends ContentObserver{
         LogUtil.logInfo("debug", TAG + "--> onChange(boolean selfChange)  selfChange = " + selfChange );
 
     }
+
+
+
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+
+
+    public void querySmsDb(Context context) {
+        querySmsDb(context, Uri.parse("content://sms/inbox"));
+    }
+
+    /**
+     * 查询手机短信
+     */
+    public void  querySmsDb(Context context, Uri uri) {
+        Log.d("debug", "onChange(boolean selfChange)");
+
+        Cursor c = context.getContentResolver().query(uri, null, null, null, "date desc");
+        if (c != null) {
+            while (c.moveToNext()) {
+                Date d = new Date(c.getLong(c.getColumnIndex("date")));
+                String date = dateFormat.format(d);
+                StringBuilder sb = new StringBuilder();
+                sb.append("发件人手机号码: " + c.getString(c.getColumnIndex("address")))
+                        .append("信息内容: " + c.getString(c.getColumnIndex("body")))
+                        .append(" 是否查看: " + c.getInt(c.getColumnIndex("read")))
+                        .append(" 类型： " + c.getInt(c.getColumnIndex("type"))).append(date);
+
+                LogUtil.logInfo("debug", " --> length = " + sb.toString().length() + "  sb.toString() = " + sb.toString());
+                LogUtil.logInfo("debug", "--》 c.getInt(c.getColumnIndex(\"read\")) = " + c.getInt(c.getColumnIndex("read")));
+            }
+
+            c.close();
+        }
+    }
+
 
 
     /**
