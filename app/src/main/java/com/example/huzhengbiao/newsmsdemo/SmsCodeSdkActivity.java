@@ -16,6 +16,8 @@ public class SmsCodeSdkActivity extends AppCompatActivity {
 
     private SmsVerifyCatcher smsVerifyCatcher;
 
+    private ClipboardManagerPresent mClipboardManagerPresent;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -26,12 +28,25 @@ public class SmsCodeSdkActivity extends AppCompatActivity {
             public void onSmsCatch(String message) {
                 String code = parseCode(message);//Parse verification code
 
-                LogUtil.logInfo("debug", TAG + "---> code = " + code);
+                LogUtil.logInfo("debug", TAG + "---> code = " + code + "  message = " + message);
                 //then you can send verification code to server
+            }
+        });
+
+        mClipboardManagerPresent = new ClipboardManagerPresent(this, new ClipboardManagerPresent.OnClipboardSmsCodeListener() {
+            @Override
+            public void onSmsCode(String code) {
+
             }
         });
     }
 
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mClipboardManagerPresent.destroy();
+    }
 
     @Override
     protected void onStart() {
